@@ -1,0 +1,9 @@
+<%# Create "*:<port>" for each specific port number at the end of the VirtualHost line. %>
+<VirtualHost <% webserver_ports.each do |port| %> *:<%= port %><% end %>>
+    ServerName <%= server_name %>
+<% unless server_alias == "" -%>
+	ServerAlias <%= server_alias %>
+<% end -%>
+    DocumentRoot <%= project_path %>
+    <%= additional_webserver_config %>
+</VirtualHost>

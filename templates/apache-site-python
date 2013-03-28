@@ -1,0 +1,31 @@
+<%# Create "*:<port>" for each specific port number at the end of the VirtualHost line. %>
+<VirtualHost <% webserver_ports.each do |port| %> *:<%= port %><% end %>>
+    ServerName <%= server_name %>
+<% unless server_alias == "" -%>
+	ServerAlias <%= server_alias %>
+<% end -%>
+
+    DocumentRoot <%= project_path %>
+
+    Alias /robots.txt <%= project_path %>/robots.txt
+    Alias /favicon.ico <%= project_path %>/favicon.ico
+
+    Alias /static <%= project_path %>/static/
+
+    <Directory <%= project_path %>>
+        Order allow,deny
+        Allow from all
+    </Directory>
+
+    WSGIDaemonProcess <%= project_name %>
+    WSGIScriptAlias / <%= site_wsgi_file %>
+
+    <Directory <%= project_path %>>
+        WSGIProcessGroup <%= project_name %>
+        WSGIApplicationGroup %{GLOBAL}
+        Order deny,allow
+        Allow from all
+    </Directory>
+
+    <%= additional_webserver_config %>
+</VirtualHost>
