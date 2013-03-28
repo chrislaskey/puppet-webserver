@@ -95,7 +95,7 @@ Backup Script
 A custom puppet-compatable push-based round-robin automated file backup system
 is included. See the
 [round-robin-backup.py](https://github.com/chrislaskey/round-robin-backup.py)
-repository for more information on the backup script, and see above for backup
+github repository for more information on the backup script, and see above for backup
 related passable class parameters in Puppet.
 
 Also includes a `pre-backup.sh` script for creating live-data information
