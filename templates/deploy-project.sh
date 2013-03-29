@@ -166,9 +166,13 @@ create_project_directory() {
 #	If git repo exists on the remote, copy files, omitting the .git directory
 #	Else, copy files using rsync
 
-_transfer_backup_files_with_rsync () {
+_transfer_exisiting_backup_files_with_rsync_or_create_backup_dir () {
+	if sudo -u "$deploy_user" ssh "$remote_host" "test ! -d ${backup_dir} && mkdir -p ${backup_dir}"; then
+		log "NOTICE" "Created remote backup directory, ssh '$remote_host' 'test ! -d ${backup_dir} && mkdir -p ${backup_dir}'."
+	fi
+
 	if ! sudo -u "$deploy_user" rsync -az "${remote_host}:${backup_dir}/" "$project_dir"; then
-		error "Could not export backup files from remote directory, rsync -a '${remote_host}:${backup_dir}/' '$project_dir'."
+		error "Could not import backup files from remote directory, rsync -a '${remote_host}:${backup_dir}/' '$project_dir'."
 	fi
 }
 
@@ -176,7 +180,7 @@ import_backup_files_if_new () {
 	if [[ "$project_is_new" == "true" ]]; then
 		return 0
 	fi
-	_transfer_backup_files_with_rsync
+	_transfer_exisiting_backup_files_with_rsync_or_create_backup_dir
 }
 
 # Update code
