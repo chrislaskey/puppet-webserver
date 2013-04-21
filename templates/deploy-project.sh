@@ -22,16 +22,16 @@ original_dir=`dirname "$0"`
 echo $original_dir
 
 project_name=$1
-project_path="/data/websites" # TODO: Pull in this root from puppet variable
-project_dir="${project_path}/${project_name}" # TODO: Pull in this root from puppet variable
-project_config_dir="${project_dir}/.config" # TODO: Pull in this root from puppet variable
+project_path="<%= local_websites_dir %>"
+project_dir="${project_path}/${project_name}"
+project_config_dir="${project_dir}/<%= project_config_dir %>"
 project_is_new="false"
 mysql_root_envvars="/data/mysql/mysql_envvars.sh"
 tmpdir="${project_dir}-tmp"
 
-remote_user="deploy"
-remote_host="compnet-nexus.bu.edu"
-remote_path="/data/available-websites" # TODO: Pull in this path from puppet variable
+remote_user="<%= remote_user %>"
+remote_host="<%= remote_host %>"
+remote_path="<%= remote_websites_dir %>"
 remote_dir="${remote_path}/${project_name}"
 code_dir="${remote_dir}/files"
 backup_dir="${remote_dir}/backup/latest"

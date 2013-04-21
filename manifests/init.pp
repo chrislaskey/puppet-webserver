@@ -6,7 +6,11 @@ define website (
 	$webserver = "apache",
 	$webserver_ports = "80", # Can specify multiples using a list: ["80", "8080"]
 	$additional_webserver_config = "",
-	$websites_dir = "/data/websites",
+	$remote_websites_dir = "/data/available-websites",
+	$remote_host = "compnet-nexus.bu.edu",
+	$remote_user = "deploy",
+	$local_websites_dir = "/data/websites",
+	$project_config_dir = ".config",
 	$backup = True,
 	$backup_remote_server = $puppetmaster_fqdn,
 	$backup_remote_dir = "/data/available-websites",
@@ -26,13 +30,13 @@ define website (
 	# Class variables
 	# ==========================================================================
 
-	$project_path = "${websites_dir}/${project_name}"
+	$project_path = "${local_websites_dir}/${project_name}"
 
 	# Transfer project code
 	# ==========================================================================
 
-	if ! defined( File[$websites_dir] ){
-		file { $websites_dir:
+	if ! defined( File[$local_websites_dir] ){
+		file { $local_websites_dir:
 			ensure => "directory",
 			owner => "www-data",
 			group => "www-data",
@@ -115,21 +119,21 @@ define website (
 	# Website deployment and configuration
 	# ==========================================================================
 
-	if ! defined( File["${websites_dir}/deploy.sh"] ) {
-		file { "${websites_dir}/deploy.sh":
+	if ! defined( File["${local_websites_dir}/deploy.sh"] ) {
+		file { "${local_websites_dir}/deploy.sh":
 			ensure => "present",
 			content => template("website/deploy-project.sh"),
 			owner => "root",
 			group => "root",
 			mode => "0700",
 			require => [
-				File["${websites_dir}"],
+				File["${local_websites_dir}"],
 			],
 		}
 	}
 
 	exec { "${project_name}-deploy.sh":
-		command => "${websites_dir}/deploy.sh ${project_name}",
+		command => "${local_websites_dir}/deploy.sh ${project_name}",
 		path => "/bin:/sbin:/usr/bin:/usr/sbin",
 		user => "root",
 		group => "root",
