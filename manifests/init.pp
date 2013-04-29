@@ -11,7 +11,7 @@ define website (
 	$remote_user = "deploy",
 	$local_websites_dir = "/data/websites",
 	$project_config_dir = ".config",
-	$backup = True,
+	$backup = true,
 	$backup_remote_server = $puppetmaster_fqdn,
 	$backup_remote_dir = "/data/available-websites",
 	$backup_user = "deploy",
@@ -85,6 +85,23 @@ define website (
 			],
 		}
 
+	if $deploy_refactor == true {
+
+		file { $apache_config_enabled_dir:
+			ensure => "link",
+			target => $apache_config_available_dir,
+			require => [
+				File[$apache_config_available_dir],
+			],
+			notify => [
+				Exec["apache2-config-reloader-${project_name}"],
+				Exec["${project_name}-deploy-files.sh"],
+				Exec["${project_name}-deploy-setup.sh"],
+			],
+		}
+	
+	}else{
+
 		file { $apache_config_enabled_dir:
 			ensure => "link",
 			target => $apache_config_available_dir,
@@ -96,6 +113,8 @@ define website (
 				Exec["${project_name}-deploy.sh"],
 			],
 		}
+	
+	}
 
 		if ! defined(File["/etc/apache2/sites-enabled/000-default"]) {
 			file { "/etc/apache2/sites-enabled/000-default":
@@ -123,10 +142,12 @@ define website (
 	# Website deployment and configuration
 	# ==========================================================================
 
-	if $deploy_refactor == True {
+	if $deploy_refactor == true {
 
 		# Splitting deploy script into distinct pieces for file transfer and
 		# setup.
+		#
+		# TODO: Next step, split the deploy file into two, then test.
 
 	  	if ! defined( File["${local_websites_dir}/deploy-files.sh"] ) {
 		  	file { "${local_websites_dir}/deploy-files.sh":
@@ -142,11 +163,14 @@ define website (
 	  	}
 
 	  	exec { "${project_name}-deploy-files.sh":
-		  	command => "test ${deploy_files} == 'True' && ${local_websites_dir}/deploy-files.sh ${project_name}",
+		  	command => "test '${deploy_files}' = 'true' && ${local_websites_dir}/deploy-files.sh ${project_name}",
 		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
 		  	user => "root",
 		  	group => "root",
 		  	logoutput => "on_failure",
+			require => [
+				File["${local_websites_dir}/deploy-files.sh"],
+			],
 	  	}
 
 	  	if ! defined( File["${local_websites_dir}/deploy-setup.sh"] ) {
@@ -163,13 +187,14 @@ define website (
 	  	}
 
 	  	exec { "${project_name}-deploy-setup.sh":
-		  	command => "test ${deploy_setup} == 'True' && ${local_websites_dir}/deploy-setup.sh ${project_name}",
+		  	command => "test '${deploy_setup}' = 'true' && ${local_websites_dir}/deploy-setup.sh ${project_name}",
 		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
 		  	user => "root",
 		  	group => "root",
 		  	logoutput => "on_failure",
 			require => [
 				Exec["${project_name}-deploy-files.sh"],
+				File["${local_websites_dir}/deploy-setup.sh"],
 			],
 	  	}
 
@@ -198,7 +223,7 @@ define website (
 
 	}
 
-	if $backup == True {
+	if $backup == true {
 
 		if ! defined( File["/data/puppet/pre-backup"] ) {
 			file { "/data/puppet/pre-backup":
