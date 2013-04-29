@@ -25,6 +25,10 @@ define website (
 	$backup_cron_weekday = '*',
 	$backup_cron_monthday = '*',
 	$backup_cron_month = '*',
+
+	$deploy_refactor = false,
+	$deploy_files = true,
+	$deploy_setup = true,
 ) {
 
 	# Class variables
@@ -119,25 +123,79 @@ define website (
 	# Website deployment and configuration
 	# ==========================================================================
 
-	if ! defined( File["${local_websites_dir}/deploy.sh"] ) {
-		file { "${local_websites_dir}/deploy.sh":
-			ensure => "present",
-			content => template("website/deploy-project.sh"),
-			owner => "root",
-			group => "root",
-			mode => "0700",
-			require => [
-				File["${local_websites_dir}"],
-			],
-		}
-	}
+	if $deploy_refactor == True {
 
-	exec { "${project_name}-deploy.sh":
-		command => "${local_websites_dir}/deploy.sh ${project_name}",
-		path => "/bin:/sbin:/usr/bin:/usr/sbin",
-		user => "root",
-		group => "root",
-		logoutput => "on_failure",
+		# Splitting deploy script into distinct pieces for file transfer and
+		# setup.
+
+	  	if ! defined( File["${local_websites_dir}/deploy-files.sh"] ) {
+		  	file { "${local_websites_dir}/deploy-files.sh":
+			  	ensure => "present",
+			  	content => template("website/deploy-files.sh"),
+			  	owner => "root",
+			  	group => "root",
+			  	mode => "0700",
+			  	require => [
+				  	File["${local_websites_dir}"],
+			  	],
+		  	}
+	  	}
+
+	  	exec { "${project_name}-deploy-files.sh":
+		  	command => "test ${deploy_files} == 'True' && ${local_websites_dir}/deploy-files.sh ${project_name}",
+		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
+		  	user => "root",
+		  	group => "root",
+		  	logoutput => "on_failure",
+	  	}
+
+	  	if ! defined( File["${local_websites_dir}/deploy-setup.sh"] ) {
+		  	file { "${local_websites_dir}/deploy-setup.sh":
+			  	ensure => "present",
+			  	content => template("website/deploy-setup.sh"),
+			  	owner => "root",
+			  	group => "root",
+			  	mode => "0700",
+			  	require => [
+				  	File["${local_websites_dir}"],
+			  	],
+		  	}
+	  	}
+
+	  	exec { "${project_name}-deploy-setup.sh":
+		  	command => "test ${deploy_setup} == 'True' && ${local_websites_dir}/deploy-setup.sh ${project_name}",
+		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
+		  	user => "root",
+		  	group => "root",
+		  	logoutput => "on_failure",
+			require => [
+				Exec["${project_name}-deploy-files.sh"],
+			],
+	  	}
+
+	}else{
+
+	  	if ! defined( File["${local_websites_dir}/deploy.sh"] ) {
+		  	file { "${local_websites_dir}/deploy.sh":
+			  	ensure => "present",
+			  	content => template("website/deploy-project.sh"),
+			  	owner => "root",
+			  	group => "root",
+			  	mode => "0700",
+			  	require => [
+				  	File["${local_websites_dir}"],
+			  	],
+		  	}
+	  	}
+
+	  	exec { "${project_name}-deploy.sh":
+		  	command => "${local_websites_dir}/deploy.sh ${project_name}",
+		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
+		  	user => "root",
+		  	group => "root",
+		  	logoutput => "on_failure",
+	  	}
+
 	}
 
 	if $backup == True {
