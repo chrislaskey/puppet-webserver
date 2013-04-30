@@ -6,11 +6,6 @@ define website (
 	$webserver = "apache",
 	$webserver_ports = "80", # Can specify multiples using a list: ["80", "8080"]
 	$additional_webserver_config = "",
-	$remote_websites_dir = "/data/available-websites",
-	$remote_host = "compnet-nexus.bu.edu",
-	$remote_user = "deploy",
-	$local_websites_dir = "/data/websites",
-	$project_config_dir = ".config",
 	$backup = true,
 	$backup_remote_server = $puppetmaster_fqdn,
 	$backup_remote_dir = "/data/available-websites",
@@ -26,9 +21,15 @@ define website (
 	$backup_cron_monthday = '*',
 	$backup_cron_month = '*',
 
+	# TODO: Deprecated in deploy module refactor
 	$deploy_refactor = false,
 	$deploy_files = true,
 	$deploy_setup = true,
+	$remote_websites_dir = "/data/available-websites",
+	$remote_host = "compnet-nexus.bu.edu",
+	$remote_user = "deploy",
+	$local_websites_dir = "/data/websites",
+	$project_config_dir = ".config",
 ) {
 
 	# Class variables
@@ -85,8 +86,6 @@ define website (
 			],
 		}
 
-	if $deploy_refactor == true {
-
 		file { $apache_config_enabled_dir:
 			ensure => "link",
 			target => $apache_config_available_dir,
@@ -95,26 +94,10 @@ define website (
 			],
 			notify => [
 				Exec["apache2-config-reloader-${project_name}"],
-				Exec["${project_name}-deploy-files.sh"],
-				Exec["${project_name}-deploy-setup.sh"],
-			],
-		}
-	
-	}else{
-
-		file { $apache_config_enabled_dir:
-			ensure => "link",
-			target => $apache_config_available_dir,
-			require => [
-				File[$apache_config_available_dir],
-			],
-			notify => [
-				Exec["apache2-config-reloader-${project_name}"],
+	  	  	  	# TODO: Deprecated in deploy module refactor
 				Exec["${project_name}-deploy.sh"],
 			],
 		}
-	
-	}
 
 		if ! defined(File["/etc/apache2/sites-enabled/000-default"]) {
 			file { "/etc/apache2/sites-enabled/000-default":
@@ -142,85 +125,27 @@ define website (
 	# Website deployment and configuration
 	# ==========================================================================
 
-	if $deploy_refactor == true {
-
-		# Splitting deploy script into distinct pieces for file transfer and
-		# setup.
-		#
-		# TODO: Next step, split the deploy file into two, then test.
-
-	  	if ! defined( File["${local_websites_dir}/deploy-files.sh"] ) {
-		  	file { "${local_websites_dir}/deploy-files.sh":
-			  	ensure => "present",
-			  	content => template("website/deploy-files.sh"),
-			  	owner => "root",
-			  	group => "root",
-			  	mode => "0700",
-			  	require => [
-				  	File["${local_websites_dir}"],
-			  	],
-		  	}
-	  	}
-
-	  	exec { "${project_name}-deploy-files.sh":
-		  	command => "test '${deploy_files}' = 'true' && ${local_websites_dir}/deploy-files.sh ${project_name}",
-		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
-		  	user => "root",
-		  	group => "root",
-		  	logoutput => "on_failure",
+	# TODO: Deprecated in deploy module refactor
+	if ! defined( File["${local_websites_dir}/deploy.sh"] ) {
+		file { "${local_websites_dir}/deploy.sh":
+			ensure => "present",
+			content => template("website/deploy-project.sh"),
+			owner => "root",
+			group => "root",
+			mode => "0700",
 			require => [
-				File["${local_websites_dir}/deploy-files.sh"],
+				File["${local_websites_dir}"],
 			],
-	  	}
+		}
+	}
 
-	  	if ! defined( File["${local_websites_dir}/deploy-setup.sh"] ) {
-		  	file { "${local_websites_dir}/deploy-setup.sh":
-			  	ensure => "present",
-			  	content => template("website/deploy-setup.sh"),
-			  	owner => "root",
-			  	group => "root",
-			  	mode => "0700",
-			  	require => [
-				  	File["${local_websites_dir}"],
-			  	],
-		  	}
-	  	}
-
-	  	exec { "${project_name}-deploy-setup.sh":
-		  	command => "test '${deploy_setup}' = 'true' && ${local_websites_dir}/deploy-setup.sh ${project_name}",
-		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
-		  	user => "root",
-		  	group => "root",
-		  	logoutput => "on_failure",
-			require => [
-				Exec["${project_name}-deploy-files.sh"],
-				File["${local_websites_dir}/deploy-setup.sh"],
-			],
-	  	}
-
-	}else{
-
-	  	if ! defined( File["${local_websites_dir}/deploy.sh"] ) {
-		  	file { "${local_websites_dir}/deploy.sh":
-			  	ensure => "present",
-			  	content => template("website/deploy-project.sh"),
-			  	owner => "root",
-			  	group => "root",
-			  	mode => "0700",
-			  	require => [
-				  	File["${local_websites_dir}"],
-			  	],
-		  	}
-	  	}
-
-	  	exec { "${project_name}-deploy.sh":
-		  	command => "${local_websites_dir}/deploy.sh ${project_name}",
-		  	path => "/bin:/sbin:/usr/bin:/usr/sbin",
-		  	user => "root",
-		  	group => "root",
-		  	logoutput => "on_failure",
-	  	}
-
+	# TODO: Deprecated in deploy module refactor
+	exec { "${project_name}-deploy.sh":
+		command => "${local_websites_dir}/deploy.sh ${project_name}",
+		path => "/bin:/sbin:/usr/bin:/usr/sbin",
+		user => "root",
+		group => "root",
+		logoutput => "on_failure",
 	}
 
 	if $backup == true {
