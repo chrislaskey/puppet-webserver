@@ -6,6 +6,7 @@ define website (
 	$webserver = "apache",
 	$webserver_ports = "80", # Can specify multiples using a list: ["80", "8080"]
 	$additional_webserver_config = "",
+	$local_websites_dir = "/data/websites",
 	$backup = true,
 	$backup_remote_server = $puppetmaster_fqdn,
 	$backup_remote_dir = "/data/available-websites",
@@ -20,34 +21,12 @@ define website (
 	$backup_cron_weekday = '*',
 	$backup_cron_monthday = '*',
 	$backup_cron_month = '*',
-
-	# TODO: Deprecated in deploy module refactor
-	$deploy_refactor = false,
-	$deploy_files = true,
-	$deploy_setup = true,
-	$remote_websites_dir = "/data/available-websites",
-	$remote_host = "compnet-nexus.bu.edu",
-	$remote_user = "deploy",
-	$local_websites_dir = "/data/websites",
-	$project_config_dir = ".config",
 ) {
 
 	# Class variables
 	# ==========================================================================
 
 	$project_path = "${local_websites_dir}/${project_name}"
-
-	# Transfer project code
-	# ==========================================================================
-
-	if ! defined( File[$local_websites_dir] ){
-		file { $local_websites_dir:
-			ensure => "directory",
-			owner => "www-data",
-			group => "www-data",
-			mode => "0775",
-		}
-	}
 
 	# Deploy webserver configuration
 	# ==========================================================================
@@ -94,8 +73,6 @@ define website (
 			],
 			notify => [
 				Exec["apache2-config-reloader-${project_name}"],
-	  	  	  	# TODO: Deprecated in deploy module refactor
-				Exec["${project_name}-deploy.sh"],
 			],
 		}
 
@@ -124,29 +101,6 @@ define website (
 
 	# Website deployment and configuration
 	# ==========================================================================
-
-	# TODO: Deprecated in deploy module refactor
-	if ! defined( File["${local_websites_dir}/deploy.sh"] ) {
-		file { "${local_websites_dir}/deploy.sh":
-			ensure => "present",
-			content => template("website/deploy-project.sh"),
-			owner => "root",
-			group => "root",
-			mode => "0700",
-			require => [
-				File["${local_websites_dir}"],
-			],
-		}
-	}
-
-	# TODO: Deprecated in deploy module refactor
-	exec { "${project_name}-deploy.sh":
-		command => "${local_websites_dir}/deploy.sh ${project_name}",
-		path => "/bin:/sbin:/usr/bin:/usr/sbin",
-		user => "root",
-		group => "root",
-		logoutput => "on_failure",
-	}
 
 	if $backup == true {
 
