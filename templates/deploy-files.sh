@@ -2,41 +2,28 @@
 
 # This file should only be executed by the puppetmaster.
 
-# If .config/mysql exists in project
-#	If database-backup dir exists
-#		if git repo exists, get git archive (no .git dir). Deploy. Then rm temporary deploy file.
-#		else, ssh/tar dir
-#	Execute .config/mysql file based on table version.
-
 # Note: When executing remote ssh <host> '<command>', single quotes mean
 # variables are evaluated on the remote host. Double quotes means variables
 # are evaluated before executing remote ssh command, in current machine's
 # local bash variable scope.
 
-# TODO: Clean up project file permissions using blanket www-data chown for all project files via deploy script.
-# Then finer grained individual file control using application specific post-hooks called by deploy script.
-# NOTE: is this still needed now that git pulls with www-data as local file owner?
-
 this_file=`basename "$0"`
 original_dir=`dirname "$0"`
-echo $original_dir
 
 project_name=$1
 project_path="<%= local_websites_dir %>"
 project_dir="${project_path}/${project_name}"
 project_config_dir="${project_dir}/<%= project_config_dir %>"
 project_is_new="false"
-mysql_root_envvars="/data/mysql/mysql_envvars.sh"
 tmpdir="${project_dir}-tmp"
 
+deploy_user="deploy"
 remote_user="<%= remote_user %>"
 remote_host="<%= remote_host %>"
 remote_path="<%= remote_websites_dir %>"
 remote_dir="${remote_path}/${project_name}"
 code_dir="${remote_dir}/files"
 backup_dir="${remote_dir}/backup/latest"
-
-deploy_user="deploy"
 
 git_remote="${remote_user}@${remote_host}:${code_dir}"
 git_code_branch="live"
@@ -296,160 +283,19 @@ _update_code_with_rsync_only_if_needed () {
 	fi
 }
 
-update_project () {
-	if sudo -u "$deploy_user" ssh "$remote_host" "test -d ${code_dir}/.git"; then
-		_update_code_with_git
-	else
-		_update_code_with_rsync_only_if_needed
-	fi
-}
-
-# Configure code
-
 _set_default_file_ownership () {
 	if ! chown -R "${post_deploy_file_user}:${post_deploy_file_group}" "$project_dir"; then
 		error "Could not switch file ownership from deploy user to post deploy user:group: '${deploy_user}' to '${post_deploy_file_user}:${post_deploy_file_group}'"
 	fi
 }
 
-_after_update_application_scripts () {
-	# TODO: Once standardized, look into that project dir E.g.:
-	# look into ${project_config_dir}/scripts/after-file-update.sh and execute 
-	return 0
-}
-
-_reload_if_python_wsgi_app () {
-	# Python applications running on Apache/mod_wsgi need to be reloaded after
-	# files have been changed. By default WSGIScriptReloading is on, meaning
-	# a reload will occur if .wsgi file is touched.
-	wsgi_file=`ls -a | grep --color=never \.wsgi$`
-	if [[ -n "$wsgi_file" ]]; then
-		if ! touch "$wsgi_file"; then
-			error "Found Python .wsgi file, but could not reload it with the touch command: '${wsgi_file}'"
-		fi
+update_project () {
+	if sudo -u "$deploy_user" ssh "$remote_host" "test -d ${code_dir}/.git"; then
+		_update_code_with_git
+	else
+		_update_code_with_rsync_only_if_needed
 	fi
-}
-
-_after_update_reload_scripts () {
-	_reload_if_python_wsgi_app
-}
-
-configure_project () {
 	_set_default_file_ownership
-	# TODO: Add a boolean variable to track if either file backup or update pulled in files. Then execute if true.
-	cd "$project_dir"
-	_after_update_application_scripts
-	# _after_update_reload_scripts # TODO: Causing deploy script failure
-	cd "$original_dir"
-}
-
-# Update database
-
-_import_database_file () {
-	file="$1"
-	set +o nounset
-	optional_db_name="$2"
-	set -o nounset
-	if [[ ! -f "$file" ]]; then
-		error "Could not find file to import into mysql: '${file}'"
-	fi
-
-	# Note: there must be no space between -p and password.
-	if ! mysql -u ${mysql_root_user} -p${mysql_root_password} ${optional_db_name} < $file; then
-		error "Could not import mysql file: '${file}'"
-	fi
-}
-
-_configure_database () {
-	db_directory="$1"
-	db_name=`head -n 1 "${db_directory}/name"`
-
-	db_file="${db_directory}/database.sql"
-	_import_database_file "$db_file"
-
-	if ! mysql -u ${mysql_root_user} -p${mysql_root_password} ${db_name}; then
-		error "Could not find database: '${db_name}'. Likely a misconfigured db file: '${db_file}'"
-	fi
-}
-
-_configure_database_users () {
-	db_directory="$1"
-	db_name=`head -n 1 "${db_directory}/name"`
-
-	users_file="${db_directory}/users.sql"
-	_import_database_file "$users_file"
-}
-
-_load_database_data_if_needed () {
-	# If a data file exists and the database is schema-less (empty),
-	# import data.
-	db_directory="$1"
-	db_name=`head -n 1 "${db_directory}/name"`
-
-	db_data_file="${db_directory}/data.sql"
-	if [[ ! -f "$db_data_file" ]]; then
-		return 0
-	fi
-
-	tables=`mysql -u ${mysql_root_user} -p${mysql_root_password} -Nse 'SHOW TABLES' ${db_name}`
-	if [[ -z "$tables" ]]; then
-		_import_database_file "$db_data_file" "$db_name"
-		return 0
-	fi
-}
-
-_load_database_schema_if_needed () {
-	# If there was no data file and the database is still schema-less (empty)
-	# then import the schema file if it exists.
-	db_directory="$1"
-	db_name=`head -n 1 "${db_directory}/name"`
-
-	db_schema_file="${db_directory}/schema.sql"
-	if [[ ! -f "$db_schema_file" ]]; then
-		return 0
-	fi
-
-	tables=`mysql -u ${mysql_root_user} -p${mysql_root_password} -Nse 'SHOW TABLES' ${db_name}`
-	if [[ -z "$tables" ]]; then
-		_import_database_file "$db_schema_file" "$db_name"
-		return 0
-	fi
-}
-
-_update_database_schema_if_needed () {
-	# TODO: Get database schema version
-	# TODO: Then checkout the latest "${project_config_dir}/mysql/" dir,
-	# ensuring the any needed upgrade/downgrade scripts are available.
-	# Without this it may not be possible to downgrade from a high schema,
-	# for example when the code is an old version and the DB is newest,
-	# The old code version will not have latest upgrade/downgrade files.
-	# TODO: Then check "${project_config_dir}/mysql/scheme-update*" or
-	# "${project_config_dir}/mysql/scheme-downgrade* files.
-	return 0
-}
-
-update_and_configure_mysql () {
-	if [[ ! -f "${mysql_root_envvars}" ]]; then
-		return 0
-	fi
-
-	source "$mysql_root_envvars"
-
-	if [[ ! -d "${project_config_dir}" ]]; then
-		return 0
-	fi
-
-	# MySQL files are stored in ${project_config_dir}/mysql* where mysql*
-	# could be either: "mysql" or in the case of multiple databases:
-	# "mysql-dbname-one mysql-dbname-two ..."
-	# For statements return harmlessly when bash command returns non-zero.
-	for i in `find "${project_config_dir}" -type d -maxdepth 1 | grep --color=never mysql`; do
-		_configure_database "$i"
-		_configure_database_users "$i"
-		_load_database_data_if_needed "$i"
-		_load_database_schema_if_needed "$i"
-		_update_database_schema_if_needed "$i"
-	done
 }
 
 # Application execution
@@ -461,5 +307,3 @@ check_if_project_is_new
 create_project_directory
 import_backup_files_if_new
 update_project
-configure_project
-update_and_configure_mysql

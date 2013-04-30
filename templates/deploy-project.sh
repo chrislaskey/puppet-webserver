@@ -19,7 +19,6 @@
 
 this_file=`basename "$0"`
 original_dir=`dirname "$0"`
-echo $original_dir
 
 project_name=$1
 project_path="<%= local_websites_dir %>"
