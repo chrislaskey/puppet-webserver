@@ -1,11 +1,15 @@
 About
 ================================================================================
 
-A custom puppet module for deploying websites to Ubuntu webservers. This module
-is a meta-module, combining many projects such as deployment, backup, and
-Puppet configuration scripts under one umbrella module.
+A custom puppet module for managing websites on Ubuntu webservers. This module
+is a meta-module, combining many projects such as backup and
+webserver configuration under one umbrella module.
 
-Default arguments for 0.8.0 include:
+**Note** The deploying of files from a remote server, and website specific
+setup and configuration has been removed in version 0.9.0. See the
+puppet-deploy module for that functionality.
+
+Default arguments for 0.9.0 include:
 
 		$project_name = $title,
 		$server_name = "",
@@ -14,8 +18,8 @@ Default arguments for 0.8.0 include:
 		$webserver = "apache",
 		$webserver_ports = "80", # Can specify multiples using a list: ["80", "8080"]
 		$additional_webserver_config = "",
-		$websites_dir = "/data/websites",
-		$backup = True,
+		$local_websites_dir = "/data/websites",
+		$backup = true,
 		$backup_remote_server = $puppetmaster_fqdn,
 		$backup_remote_dir = "/data/available-websites",
 		$backup_user = "deploy",
@@ -33,62 +37,6 @@ Default arguments for 0.8.0 include:
 The webserver parameter currently supports Apache configurations for
 `Apache+PHP_Fastcgi` and `Apache+Mod_WSGI`.
 
-Deploy Script
--------------
-
-This module includes a project deployment shell script that:
-
-	- Transfers files intelligently from a mix of live-data backups and
-	  git repository files.
-	- Sets up PHP and Python environments, including `setup.sh` and `setup.sh`
-	  scripts.
-	- Creates MySQL database, including database creation, user creation,
-	  schema checks, and data importing.
-
-Future revisions will include post-install smoke tests and SQLite support.
-
-# Server Filesystem #
-
-Available projects are stored on the puppet server in the following configuration:
-
-	available-websites/my-project
-	available-websites/my-project/files/ # Git repository or flat files
-	available-websites/my-project/backup/
-	available-websites/my-project/backup/latest/
-	available-websites/my-project/backup/automated-backup-2013-01-01.tar.gz
-	available-websites/my-project/backup/automated-backup-2012-01-01.tar.gz
-
-Inside the `my-project/files` directory should be a current group of files
-and/or a git repository of files.
-
-The backup script will create the `backup/`, put the latest files in
-`backup/latest`, and create archives based on a round-robin backup scheme and
-Puppet parameters passed to the class.
-
-# Project Filesystem #
-
-The project files should include a `.config` directory. This contains meta
-information about the project, including information on how to deploy. It may
-contains directories such as:
-
-	.config/
-	.config/mysql-appusers/
-	.config/mysql-appdata/
-	.config/scripts/
-
-Where a `mysql-*` directory includes the filels:
-
-	.config/mysql-appusers/database.sql
-	.config/mysql-appusers/name
-	.config/mysql-appusers/schema.sql
-	.config/mysql-appusers/users.sql
-
-**Note:** If there is only one database, then the dir can simply be called
-`mysql`.
-
-The `scripts/` directory stores pre-deploy, post-deploy, and post-deploy smoke
-test scripts.
-
 Backup Script
 -------------
 
@@ -100,6 +48,16 @@ related passable class parameters in Puppet.
 
 Also includes a `pre-backup.sh` script for creating live-data information
 backups, such as MySQL database backups, before the round robin backup is run.
+
+Module Roadmap
+-------
+
+The various functionalities of this meta module will be broken off into their
+own puppet modules. The website file transfer and website configuration has
+already been split off into puppet-deploy. The backup will receive similar
+treatment, as will the webserver functionality. This module will either be
+entirely deprecated, or a meta-wrapper containing only calls to sub modules.
+There is no set timeline for these changes.
 
 License
 ================================================================================
