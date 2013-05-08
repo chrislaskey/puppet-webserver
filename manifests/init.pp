@@ -42,7 +42,7 @@ define webserver (
 
 		file { $apache_config_available_dir:
 			ensure => "present",
-			content => template("website/apache-site-${project_type}"),
+			content => template("webserver/apache-site-${project_type}"),
 			owner => "root",
 			group => "root",
 			mode => "0644",
