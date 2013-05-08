@@ -1,19 +1,10 @@
 About
 ================================================================================
 
-A custom puppet module for managing websites on Ubuntu webservers. This module
-is a meta-module, combining many projects such as webserver configuration under
-one umbrella module.
+A custom puppet module for managing per-project webserver configurations.
+Currently supports Apache.
 
-**Note** The deploying of files from a remote server, and website specific
-setup and configuration has been removed in version 0.9.0. See the
-[puppet-deploy](https://github.com/chrislaskey/puppet-deploy) module for that functionality.
-
-**Note** The round robin backup of files from a remote server, and website
-specific setup and configuration has been removed in version 0.10.0. See the
-[puppet-backup](https://github.com/chrislaskey/puppet-backup) module for that functionality.
-
-Default arguments for 0.10.0 include:
+Default arguments for 1.0.0 include:
 
 		$project_name = $title,
 		$server_name = "",
@@ -27,23 +18,14 @@ Default arguments for 0.10.0 include:
 The webserver parameter currently supports Apache configurations for
 `Apache+PHP_Fastcgi` and `Apache+Mod_WSGI`.
 
-Module Roadmap
--------
+**Note** This module used to be called `puppet-website`. That module was
+a meta-module, containing code related to project deployment, configuration and
+backup. This functionality has been split into these three distinct puppet
+modules:
 
-The various functionalities of this meta module will be broken off into their
-own puppet modules.
-
-The website file transfer and website configuration was split off
-into puppet-deploy in version 0.9.0.
-
-The round-robin backup functionality was split off into puppet-backup in
-version 0.10.0.
-
-The webserver functionality is scheduled to be split off into a new puppet
-module in version 0.11.0.
-
-After version 0.11.0 this module will either be entirely deprecated or become
-a meta-wrapper containing only calls to other puppet modules.
+[puppet-deploy](http://github.com/chrislaskey/puppet-deploy)
+[puppet-webserver](http://github.com/chrislaskey/puppet-webserver)
+[puppet-backup](http://github.com/chrislaskey/puppet-backup)
 
 License
 ================================================================================

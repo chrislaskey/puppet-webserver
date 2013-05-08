@@ -1,7 +1,7 @@
-define website (
+define webserver (
 	$project_name = $title,
 	$server_name = "",
-	$project_type = "",
+	$project_type = "", # Currently supports php, python.
 	$server_alias = "",
 	$webserver = "apache",
 	$webserver_ports = "80", # Can specify multiples using a list: ["80", "8080"]
